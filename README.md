@@ -1,85 +1,142 @@
-📋 Overview
+# 🛡️ Entra ID Identity Hardening & Security Automation Lab
 
-I built my own Entra ID tenant and configured the same identity-security baseline a secure Microsoft organisation runs in production — then extended it with Microsoft Entra ID Protection for intelligent, risk-based responses. The focus throughout: defence in depth and safe change management.
+![Microsoft Entra ID](https://img.shields.io/badge/Microsoft-Entra%20ID-0078D4?logo=microsoftazure&logoColor=white)
+![Conditional Access](https://img.shields.io/badge/Focus-Conditional%20Access-2563eb)
+![Identity Protection](https://img.shields.io/badge/Identity-Protection%20%2B%20PIM-6941C6)
+![PowerShell](https://img.shields.io/badge/Automation-PowerShell%20%2B%20Graph-012456?logo=powershell&logoColor=white)
+![Licensing](https://img.shields.io/badge/Licensing-Entra%20ID%20P2-6941C6)
+![Status](https://img.shields.io/badge/Status-Live-success)
 
-The attacker's-eye view this defends against: a stolen password → blocked by MFA → attacker tries a legacy protocol to skip MFA → blocked → attacker's IP looks suspicious → challenged again → the leaked password is detected on the dark web → the account is force-reset. Every layer closes a gap the previous one leaves open.
+> A hands-on lab that hardens a Microsoft Entra ID tenant against account-takeover attacks **and** automates the response — building a complete **mini-SOC loop: Detect → Triage → Contain.** Conditional Access, Identity Protection, PIM, PowerShell + Microsoft Graph automation, and an AI-assisted triage agent. Every control validated in report-only / What If before enabling.
 
-🧱 Conditional Access Baseline — at a glance
-Policy	Purpose	Trigger / Condition	Control	Excludes
-CA001	Enforce MFA	All sign-ins	Require MFA	CA-BreakGlass-Exclude
-CA002	Block legacy auth	Legacy client apps	Block access	CA-BreakGlass-Exclude
-CA003	Risky sign-in defence	Sign-in risk = High	Require MFA	CA-BreakGlass-Exclude
-CA004	Compromised-account defence	User risk = High	Require MFA + password change	CA-BreakGlass-Exclude
+---
 
-Naming convention: CA + number + purpose + scope — keeps the policy set auditable as it grows.
+## 📋 Overview
 
-🏗️ Lab Environment
-Account	Role	Licence	Purpose
-LabAdmin	Global Administrator	Entra ID P2	Working admin account
-Chris Green, Bala Sandhu, Shahid Ghosi	No admin rights	Entra ID P2	Standard test users (least privilege)
-bg-emergency01 / bg-emergency02	Global Administrator (permanent)	—	Break-glass emergency access
+I built my own Entra ID tenant and configured a production-grade identity-security baseline, then layered on **automation and AI** to detect, triage, and contain threats end to end.
 
-Both break-glass accounts sit in the security group CA-BreakGlass-Exclude, which is excluded from every policy.
+**The attacker's-eye view this defends against:** stolen password → blocked by MFA → attacker tries legacy auth to skip MFA → blocked → suspicious sign-in → challenged / flagged → leaked credential detected → account force-reset → an **impossible-travel** detection fires → an **AI agent triages** it into a ticket → a **PowerShell script revokes the sessions** and evicts the attacker.
 
-🔐 Day 1 — Break-glass emergency accounts
+---
 
-Created two cloud-only emergency admin accounts and placed them in an exclusion group.
+## 🔁 The mini-SOC loop
 
-Why: Break-glass accounts are emergency logins excluded from the security policies that protect everyone else. If a policy is ever misconfigured and locks everyone out — including me — these are the guaranteed way back in. They're cloud-only (no dependency on external systems), have permanent admin (they work even if just-in-time systems fail), and there are two for redundancy. Excluding them via a group means every future policy simply excludes the same group.
+| Stage | What does it | Built in |
+|---|---|---|
+| **Detect** | Identity Protection risk policies + a custom impossible-travel script | Days 4, 8 |
+| **Triage** | AI SOC agent turns a raw event into a structured JSON incident ticket | Day 9 |
+| **Contain** | PowerShell script revokes the compromised user's sessions | Day 7 |
 
-🔑 Day 2 — Enforce MFA for all users — CA001-Require-MFA-AllUsers
-Setting	Value
-Users	All users — excluding CA-BreakGlass-Exclude
-Target resources	All cloud apps
-Grant	Require multi-factor authentication
-Rollout	Report-only → validated in sign-in logs → enabled
+---
 
-Verified enforcement by signing in as a test user: after the password, they were correctly challenged for MFA (MFA is the second factor — it comes after the password).
+## 🧱 Conditional Access baseline — at a glance
 
-Why: MFA makes a stolen password useless on its own — the single most effective defence against account takeover, which starts most breaches.
+| Policy | Purpose | Trigger / Condition | Control | Excludes |
+|---|---|---|---|---|
+| **CA001** | Enforce MFA | All sign-ins | Require MFA | `CA-BreakGlass-Exclude` |
+| **CA002** | Block legacy auth | Legacy client apps | Block access | `CA-BreakGlass-Exclude` |
+| **CA003** | Risky sign-in defence | Sign-in risk = High | Require MFA | `CA-BreakGlass-Exclude` |
+| **CA004** | Compromised-account defence | User risk = High | Require MFA + password change | `CA-BreakGlass-Exclude` |
 
-Key step — migrating off Security Defaults: Microsoft doesn't allow Security Defaults and Conditional Access to run together, so I disabled Security Defaults to move to Conditional Access. This is an upgrade — Conditional Access does everything Security Defaults did (blanket MFA) plus exclusions (e.g. break-glass), conditions, and report-only testing that Security Defaults can't offer.
+*Naming convention: `CA + number + purpose + scope` — keeps the policy set auditable as it scales.*
 
-🚫 Day 3 — Block legacy authentication — CA002-Block-LegacyAuth
-Setting	Value
-Users	All users — excluding CA-BreakGlass-Exclude
-Condition (Client apps)	Legacy only — Exchange ActiveSync + Other clients
-Grant	Block access
-Validation	What If tool (simulated legacy sign-in) → confirmed → enabled
+---
 
-Why: Legacy protocols (POP, IMAP, SMTP, older clients) use basic authentication and cannot perform MFA. Left open, an attacker can use them to bypass MFA entirely with just a stolen password. Blocking legacy auth closes that back door so MFA can't be sidestepped. Scoping the policy to only legacy clients leaves modern sign-ins untouched.
+## 🏗️ Lab environment
 
-🧠 Day 4 — Identity Protection: risk-based policies — CA003 & CA004
+| Account | Role | Licence | Purpose |
+|---|---|---|---|
+| **LabAdmin** | Global Administrator | Entra ID P2 | Working admin |
+| **Chris / Bala / Shahid** | *No admin rights* | Entra ID P2 | Standard test users (least privilege) |
+| **bg-emergency01 / 02** | Global Administrator (permanent) | — | Break-glass emergency access |
 
-Added two adaptive policies using Microsoft Entra ID Protection, which scores risk in real time from Microsoft's threat intelligence and machine learning.
+Both break-glass accounts live in the security group **`CA-BreakGlass-Exclude`**, excluded from every policy.
 
-Two types of risk:
+---
 
-Risk type	Question it answers	Classic signal	Automated response
-Sign-in risk (CA003)	Is this login the real user?	Impossible travel, anonymous/Tor IP, malware-linked IP	Require MFA — verify the login now
-User risk (CA004)	Is the account compromised?	Leaked credentials (password found in a dark-web breach dump)	Force password change — burn the stolen password
+# Part 1 — Identity Hardening (Conditional Access, Identity Protection, PIM)
 
-Prerequisite — SSPR: I enabled Self-Service Password Reset first, because the "force password change" response is meaningless if the user can't reset their own password. The two features depend on each other.
+## 🔐 Day 1 — Break-glass emergency accounts
+Two cloud-only emergency admin accounts in an exclusion group.
+> **Why:** emergency logins deliberately excluded from every policy, so a misconfiguration, MFA outage, or identity-provider failure can never lock the org out of its own tenant. Cloud-only, permanent admin, two for redundancy.
 
-Both were built in report-only and validated with the What If tool (simulating high risk) before enabling.
+## 🔑 Day 2 — Enforce MFA — `CA001`
+All users (excluding break-glass) → Require MFA. Built in **report-only**, validated in sign-in logs, then enabled. **Migrated the tenant off Security Defaults** to use granular Conditional Access.
+> **Why:** MFA makes a stolen password useless alone — the top defence against account takeover.
 
-Why it matters: MFA (CA001) is static — it challenges every sign-in the same way. Identity Protection is adaptive — it reacts to detected threats. Without it, a stolen password could sit unnoticed; with it, Microsoft's intelligence catches the leak and automatically forces a reset (user risk) and challenges suspicious logins with MFA (sign-in risk). It's the intelligent layer on top of the always-on baseline.
+## 🚫 Day 3 — Block legacy authentication — `CA002`
+Condition scoped to legacy client apps only → **Block access**. Validated with the **What If** tool.
+> **Why:** legacy protocols (POP/IMAP/SMTP) can't do MFA, so leaving them open lets attackers bypass MFA with a stolen password. Blocking them closes that back door.
 
-🎯 Key concepts demonstrated
-Least privilege — only accounts that need admin rights have them.
-Break-glass / emergency access — fail-safe admin access excluded from all policies.
-Safe change management — report-only mode + the What If tool to validate before enforcing.
-MFA enforcement — defends against stolen-password attacks.
-Blocking legacy authentication — prevents MFA bypass via basic-auth protocols.
-Risk-based Conditional Access — adaptive response to compromised accounts and risky sign-ins.
-Security Defaults → Conditional Access migration — moving from a blunt baseline to granular, testable control.
-Naming conventions — keeping a policy set auditable as it scales.
-🧰 Skills & technologies
+## 🧠 Day 4 — Identity Protection risk policies — `CA003` & `CA004`
+Adaptive, ML-driven policies:
+- **Sign-in risk = High → require MFA** (is *this login* the real user?)
+- **User risk = High → force password change** (is the *account* compromised? — e.g. leaked credentials). Enabled **SSPR** as the prerequisite.
+> **Why:** MFA is static; Identity Protection is *adaptive* — it reacts to detected threats automatically.
 
-Microsoft Entra ID · Conditional Access · Entra ID Protection · Multi-Factor Authentication · Identity & Access Management · Self-Service Password Reset · Least Privilege · Defence in Depth · Security Change Management
+## ⏱️ Day 5 — Privileged Identity Management (PIM)
+Made a test user **eligible** (not active) for User Administrator, with **2-hour, MFA-and-justification-gated activation**.
+> **Why:** eliminates *standing privilege* — admin rights exist only when activated, shrinking the attack window. Break-glass stays permanent as the deliberate exception.
 
-✅ Outcome
+---
 
-A hardened Entra ID tenant with MFA enforced, legacy authentication blocked, emergency break-glass access protected, and adaptive risk-based remediation layered on top — the standard secure identity baseline for a Microsoft organisation, built and validated using professional rollout practices.
+# Part 2 — Security Automation (PowerShell + Microsoft Graph + AI)
 
-Part of an ongoing hands-on cloud security portfolio — building in public
+## 💻 Day 6 — Microsoft Graph PowerShell — the automation gateway
+Connected to Graph with **least-privilege scopes** (`User.Read.All`, `Group.Read.All`), then queried and filtered directory objects programmatically.
+> **Why:** you can't click 5,000 users — Graph lets you read and act at scale. Delegated vs application permissions, and requesting only the scope the task needs.
+
+## 🧯 Day 7 — Automated session revocation — `Revoke-Sessions.ps1`
+Escalated to a **write scope** (`User.RevokeSessions.All`) and revoked a compromised user's sessions to force re-authentication.
+> **Why:** a password reset alone doesn't kill live tokens — revoking sessions instantly evicts the attacker. This is the **Contain** step.
+
+## 🧮 Day 8 — Impossible-travel detection — `Test-ImpossibleTravel.ps1`
+A PowerShell script using the **haversine formula** to compute distance between two sign-in locations and derive implied travel speed — flagging physically impossible logins.
+> **Why:** mirrors how Entra ID Protection detects atypical travel. Key insight: impossible travel is **distance ÷ time** — the same distance is impossible in 1 hour but plausible over 24. This is the **Detect** step.
+
+## 🤖 Day 9 — AI SOC triage agent — `soc-triage-agent-prompt.txt`
+An AI agent that ingests a raw security event and returns a **structured JSON incident ticket** — severity, MITRE ATT&CK mapping, indicators, and a recommended containment playbook.
+> **Why:** automates Tier-1 triage so analysts focus on investigation. Structured JSON output is *machine-readable*, so it can feed a ticketing system or an automated playbook. This is the **Triage** step. See `example-triage-ticket.json`.
+
+---
+
+## 📁 Repository contents
+
+```
+entra-identity-hardening/
+├── README.md
+├── scripts/
+│   ├── Revoke-Sessions.ps1          # Day 7 - containment
+│   └── Test-ImpossibleTravel.ps1    # Day 8 - detection (haversine)
+├── ai-agent/
+│   ├── soc-triage-agent-prompt.txt  # Day 9 - agent design
+│   └── example-triage-ticket.json   # Day 9 - sample output
+└── screenshots/                     # policy + evidence screenshots
+```
+
+---
+
+## 🎯 Key concepts demonstrated
+
+- **Least privilege** — across users, PIM (just-in-time), break-glass exclusion, and Graph API scopes.
+- **Safe change management** — report-only mode + the What If tool before enforcing.
+- **Defence in depth** — MFA, legacy-auth blocking, risk-based policies layered together.
+- **Security Defaults → Conditional Access migration** — blunt baseline to granular, testable control.
+- **Automation at scale** — Microsoft Graph + PowerShell to read and act on the directory.
+- **Threat containment** — session revocation vs password reset.
+- **Detection logic** — impossible travel = distance ÷ time.
+- **AI-assisted SOC** — structured, machine-readable triage that closes the loop.
+
+---
+
+## 🧰 Skills & technologies
+
+`Microsoft Entra ID` · `Conditional Access` · `Entra ID Protection` · `Privileged Identity Management (PIM)` · `Multi-Factor Authentication` · `PowerShell` · `Microsoft Graph SDK` · `Identity & Access Management` · `Least Privilege` · `Incident Response` · `AI-assisted Security Operations` · `Defence in Depth`
+
+---
+
+## ✅ Outcome
+
+A hardened Entra ID tenant with MFA enforced, legacy auth blocked, adaptive risk-based remediation, just-in-time privileged access, and protected break-glass access — **plus** an automated detect → triage → contain pipeline built with PowerShell, Microsoft Graph, and an AI triage agent. The standard secure identity baseline for a Microsoft organisation, extended into automation, and built and validated with professional rollout practices.
+
+> *Part of an ongoing hands-on cloud security portfolio — building in public.*
