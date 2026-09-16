@@ -1,0 +1,26 @@
+{
+  "title": "Impossible Travel Detected for bala@shubhamstreetgmail.onmicrosoft.com",
+  "severity": "High",
+  "summary": "The user account bala@shubhamstreetgmail.onmicrosoft.com recorded a successful sign-in from Melbourne, Australia at 09:00, followed by a sign-in from London, United Kingdom at 10:00. The calculated distance between the locations is 16,903 km and the implied travel speed is 16,904 km/h, which is physically impossible. This indicates potential credential compromise, VPN/proxy usage, session hijacking, or identity misuse.",
+  "mitre_attack": [
+    { "tactic": "Initial Access", "technique": "Valid Accounts", "id": "T1078" }
+  ],
+  "indicators": {
+    "user": "bala@shubhamstreetgmail.onmicrosoft.com",
+    "ip": "203.0.113.10, 185.220.101.5",
+    "location": "Melbourne, AU -> London, UK",
+    "time": "09:00 -> 10:00 (1 hour apart)",
+    "signal": "Impossible/Atypical Travel; Distance 16,903 km; Implied Speed 16,904 km/h"
+  },
+  "recommended_actions": [
+    "Reset the user's password and revoke active sessions if compromise is suspected.",
+    "Validate whether the user was travelling or using a corporate VPN, proxy, or cloud service.",
+    "Review Entra ID sign-in logs for additional suspicious authentication activity.",
+    "Check for MFA completion details and authentication method changes.",
+    "Inspect device identifiers, user agents, and session activity associated with both sign-ins.",
+    "Hunt for additional indicators of account misuse across email, Teams, SharePoint, and other Microsoft 365 workloads.",
+    "Monitor the account for further anomalous sign-in activity."
+  ],
+  "confidence": "High",
+  "escalate": true
+}
