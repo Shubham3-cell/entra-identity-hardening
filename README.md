@@ -140,3 +140,89 @@ entra-identity-hardening/
 A hardened Entra ID tenant with MFA enforced, legacy auth blocked, adaptive risk-based remediation, just-in-time privileged access, and protected break-glass access — **plus** an automated detect → triage → contain pipeline built with PowerShell, Microsoft Graph, and an AI triage agent. The standard secure identity baseline for a Microsoft organisation, extended into automation, and built and validated with professional rollout practices.
 
 > *Part of an ongoing hands-on cloud security portfolio — building in public.*
+> 
+# 🛡️ Vulnerability Management Lab — Tenable Nessus + CVSS Scoring
+
+![Tenable Nessus](https://img.shields.io/badge/Scanner-Tenable%20Nessus%20Essentials-00355F)
+![Vulnerability Management](https://img.shields.io/badge/Focus-Vulnerability%20Management-2563eb)
+![CVSS](https://img.shields.io/badge/Scoring-CVSS%20v3.1%20%2B%20CIA%20Triad-6941C6)
+![Environment](https://img.shields.io/badge/Environment-Air--gapped%20Lab-9a6a12)
+![Status](https://img.shields.io/badge/Status-Complete-success)
+
+> A hands-on vulnerability-management lab: deploy **Tenable Nessus**, run authenticated and unauthenticated scans against an isolated Windows host, and score a real-world finding with **CVSS v3.1** from first principles using the **CIA triad**. Built and activated in a **restricted, air-gapped environment** — the offline workflow used in secure and government networks.
+
+---
+
+## 📋 Overview
+
+I set up Tenable Nessus Essentials in an isolated lab, worked through the full vulnerability-management workflow — **scan → interpret → prioritise → (remediate) → verify** — and then scored a finding by hand to understand exactly where a severity number comes from. The lab environment sat behind a corporate secure web gateway performing TLS inspection, so I completed the deployment using Nessus's **offline / air-gapped registration** rather than the standard online activation.
+
+**Lab environment:** a Windows 11 virtual machine (Oracle VirtualBox), scanned locally, with all testing confined to a system I own.
+
+---
+
+## 🧰 What I did
+
+### 1. Deployed Tenable Nessus (offline / air-gapped)
+- Installed Nessus Essentials and initialised the scanner.
+- The environment's TLS inspection blocked the standard online activation (the scanner could not validate the licensing server's certificate).
+- Diagnosed this as **SSL/TLS interception** — a classic secure-web-gateway behaviour — and completed activation the sanctioned, air-gapped way instead:
+  - Generated a **challenge code** on the scanner (`nessuscli fetch --challenge`).
+  - Registered it offline to obtain a **license file** and the **plugin feed bundle**.
+  - Loaded both manually (`nessuscli fetch --register-offline`, `nessuscli update`), then created the admin user and brought the console online — **no internet dependency**.
+- This mirrors how vulnerability scanners are operated in **air-gapped and government environments**, where the online plugin feed is never available and updates are applied manually.
+
+### 2. Ran an unauthenticated (network) scan
+- Basic Network Scan against `127.0.0.1`. Status: **Completed**.
+- Result: mostly **informational** findings — the expected outcome for an outside-in scan of a firewalled host.
+- **Key insight:** an unauthenticated scan sees a system the way an attacker on the network does — shallow, with more false positives.
+
+### 3. Configured an authenticated (credentialed) scan
+- Added Windows credentials so the scanner logs in and checks **actual patch levels and configuration** from the inside.
+- **Credentialed scanning is what mature organisations run** — far more accurate and far fewer false positives than an unauthenticated scan.
+
+### 4. Scored a finding with CVSS v3.1 (CIA triad)
+Took a representative finding — **SMBv1 / EternalBlue (CVE-2017-0144, MS17-010)** — and scored it by hand on the FIRST.org CVSS v3.1 calculator:
+
+| Metric | Value | Reasoning |
+|---|---|---|
+| Attack Vector | Network | Exploitable remotely |
+| Attack Complexity | High | Exploit needs specific conditions |
+| Privileges Required | None | No account needed |
+| User Interaction | None | No user action required |
+| Scope | Unchanged | Stays within the component |
+| **Confidentiality** | **High** | RCE lets an attacker read all data |
+| **Integrity** | **High** | RCE lets an attacker alter/encrypt data |
+| **Availability** | **High** | RCE lets an attacker crash/seize the host |
+
+**Result — matched the official NVD score exactly:**
+```
+Base Score: 8.1 (High)
+Vector:     CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H
+```
+
+---
+
+## 🎯 Key concepts demonstrated
+
+- **CVSS is the CIA triad turned into a number** — the impact half of a score is simply how badly Confidentiality, Integrity, and Availability are affected; those inputs drive the number.
+- **CVSS vs VPR** — CVSS rates *theoretical* severity (here, 8.1 despite "High" complexity); Tenable's **VPR** layers on *real-world exploitability*. EternalBlue was weaponised into WannaCry, so VPR keeps it top-priority even though CVSS complexity is High. *Score the severity, prioritise by exploitability.*
+- **Authenticated vs unauthenticated scanning** — credentialed scans check real patch state and cut false positives.
+- **The vulnerability-management loop** — detect → prioritise → remediate → **rescan to verify**, tracked through a governance process.
+- **Secure-web-gateway / TLS inspection** — why an unmanaged host can't reach the internet through a corporate proxy, and how a cert-authority error is a client correctly detecting interception.
+- **Air-gapped operation** — manual, offline plugin updates for isolated environments.
+
+---
+
+## 🧩 Skills & technologies
+
+`Tenable Nessus` · `Vulnerability Management` · `CVSS v3.1` · `CIA Triad` · `Credentialed & Uncredentialed Scanning` · `Remediation & Verification` · `Air-gapped / Offline Operation` · `Windows Security` · `Oracle VirtualBox` · `Secure Web Gateway / TLS Inspection`
+
+---
+
+## ✅ Outcome
+
+A working Tenable Nessus scanner deployed and activated in a restricted, air-gapped lab; unauthenticated and authenticated scans run against an isolated Windows host; and a real CVE scored by hand to an exact match with NVD. The lab demonstrates the end-to-end vulnerability-management workflow and the reasoning behind severity — not just how to run a tool, but how to interpret, prioritise, and justify what it finds.
+
+> *Part of an ongoing hands-on cloud-security portfolio — building in public.*
+> *All scanning was performed against systems I own, in an isolated lab, using non-production data.*
